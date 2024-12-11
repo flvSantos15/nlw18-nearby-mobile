@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
-import { Alert, Modal, Text, View } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { Alert, Modal, ScrollView, StatusBar, Text, View } from 'react-native'
 import { router, useLocalSearchParams, Redirect } from 'expo-router'
+import { useCameraPermissions, CameraView } from 'expo-camera'
 
 import { api } from '@/services/api'
 import { Loading } from '@/components/loading'
@@ -15,11 +16,15 @@ type MarketProps = DetailsProps & {
 
 export default function Market() {
   const params = useLocalSearchParams<{ id: string }>()
+  const [_, requestPermission] = useCameraPermissions()
 
   const [market, setMarket] = useState<MarketProps | null>(null)
   const [isLoading, setLoading] = useState(true)
+  const [isFetchingCoupon, setIsFetchingCoupon] = useState(true)
   const [isVisibleCameraModal, setIsVisibleCameraModal] = useState(false)
   const [coupon, setCoupon] = useState<string | null>(null)
+
+  const qrLock = useRef(false)
 
   async function fetchMarket() {
     try {
@@ -34,13 +39,47 @@ export default function Market() {
     }
   }
 
-  function handleOpenCamera() {
+  async function handleOpenCamera() {
+    const { granted } = await requestPermission()
+
+    if (!granted) {
+      return Alert.alert('Câmera', 'Você precisa habilitar o uso da câmera.')
+    }
+
+    qrLock.current = false
     setIsVisibleCameraModal(true)
   }
 
+  async function getCoupon(id: string) {
+    try {
+      const { data } = await api.patch(`/coupon/${id}`)
+
+      Alert.alert('Copom', data.coupon)
+      setCoupon(data.coupon)
+    } catch (error) {
+      console.log(error)
+      Alert.alert('Erro', 'Não foi possível utilizar o cupom.')
+    } finally {
+      setIsVisibleCameraModal(false)
+    }
+  }
+
+  function handleUseCoupon(id: string) {
+    setIsVisibleCameraModal(false)
+
+    Alert.alert(
+      'Cupom',
+      'Não é possível reutilizar um cupom resgatado. Deseja realmente resgat o cupom?',
+      [
+        { style: 'cancel', text: 'Não' },
+        { text: 'Sim', onPress: () => getCoupon(id) }
+      ]
+    )
+  }
+
   useEffect(() => {
-    if (params.id) fetchMarket()
-  }, [params.id])
+    fetchMarket()
+  }, [params.id, coupon])
 
   if (isLoading) {
     return <Loading />
@@ -52,10 +91,13 @@ export default function Market() {
 
   return (
     <View style={{ flex: 1 }}>
-      <Cover uri={market?.cover} />
+      <StatusBar barStyle="light-content" hidden={isVisibleCameraModal} />
 
-      <Details data={market} />
-      {coupon && <Coupon code={coupon} />}
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <Cover uri={market?.cover} />
+        <Details data={market} />
+        {coupon && <Coupon code={coupon} />}
+      </ScrollView>
 
       <View style={{ padding: 32 }}>
         <Button onPress={handleOpenCamera}>
@@ -64,8 +106,22 @@ export default function Market() {
       </View>
 
       <Modal style={{ flex: 1 }} visible={isVisibleCameraModal}>
-        <View style={{ flex: 1, justifyContent: 'center' }}>
-          <Button onPress={() => setIsVisibleCameraModal(false)}>
+        <CameraView
+          style={{ flex: 1 }}
+          facing="back"
+          onBarcodeScanned={({ data }) => {
+            if (data && !qrLock.current) {
+              qrLock.current = true
+              setTimeout(() => handleUseCoupon(data), 500)
+            }
+          }}
+        />
+
+        <View style={{ position: 'absolute', bottom: 32, left: 32, right: 32 }}>
+          <Button
+            onPress={() => setIsVisibleCameraModal(false)}
+            isLoading={isFetchingCoupon}
+          >
             <Button.Title>Voltar</Button.Title>
           </Button>
         </View>

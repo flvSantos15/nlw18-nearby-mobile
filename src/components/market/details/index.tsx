@@ -20,7 +20,6 @@ type TDetails = {
 }
 
 export function Details({ data }: TDetails) {
-  console.log('details', data)
   return (
     <View style={s.container}>
       <Text style={s.name}>{data.name}</Text>

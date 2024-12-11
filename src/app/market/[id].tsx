@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Alert, Text, View } from 'react-native'
+import { Alert, Modal, Text, View } from 'react-native'
 import { router, useLocalSearchParams, Redirect } from 'expo-router'
 
 import { api } from '@/services/api'
 import { Loading } from '@/components/loading'
 import { Cover } from '@/components/market/cover'
 import { Details, DetailsProps } from '@/components/market/details'
+import { Coupon } from '@/components/market/coupon'
+import { Button } from '@/components/button'
 
 type MarketProps = DetailsProps & {
   cover: string
@@ -16,6 +18,8 @@ export default function Market() {
 
   const [market, setMarket] = useState<MarketProps | null>(null)
   const [isLoading, setLoading] = useState(true)
+  const [isVisibleCameraModal, setIsVisibleCameraModal] = useState(false)
+  const [coupon, setCoupon] = useState<string | null>(null)
 
   async function fetchMarket() {
     try {
@@ -28,6 +32,10 @@ export default function Market() {
         { text: 'OK', onPress: () => router.back() }
       ])
     }
+  }
+
+  function handleOpenCamera() {
+    setIsVisibleCameraModal(true)
   }
 
   useEffect(() => {
@@ -47,6 +55,21 @@ export default function Market() {
       <Cover uri={market?.cover} />
 
       <Details data={market} />
+      {coupon && <Coupon code={coupon} />}
+
+      <View style={{ padding: 32 }}>
+        <Button onPress={handleOpenCamera}>
+          <Button.Title>Ler QR Code</Button.Title>
+        </Button>
+      </View>
+
+      <Modal style={{ flex: 1 }} visible={isVisibleCameraModal}>
+        <View style={{ flex: 1, justifyContent: 'center' }}>
+          <Button onPress={() => setIsVisibleCameraModal(false)}>
+            <Button.Title>Voltar</Button.Title>
+          </Button>
+        </View>
+      </Modal>
     </View>
   )
 }

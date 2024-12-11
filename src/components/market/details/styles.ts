@@ -17,7 +17,10 @@ export const s = StyleSheet.create({
   description: {
     fontSize: 16,
     fontFamily: fontFamily.regular,
-    color: colors.gray[500]
+    color: colors.gray[500],
+    marginTop: 12,
+    marginBottom: 32,
+    lineHeight: 22
   },
   group: {
     width: '100%',
@@ -32,5 +35,5 @@ export const s = StyleSheet.create({
     color: colors.gray[500],
     marginBottom: 12
   },
-  rules: {}
+  rule: {}
 })
